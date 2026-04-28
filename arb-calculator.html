@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Arb Calculator | The +EV Cave</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#0a0d0f;font-family:'IBM Plex Mono',monospace;color:#fff;}
+    .card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:16px 20px;margin-bottom:12px;}
+    .label-sm{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;margin-bottom:12px;}
+    .book-block{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:14px 16px;margin-bottom:10px;}
+    .book-block.arb-active{border-color:rgba(0,220,110,0.25);background:rgba(0,220,110,0.03);}
+    .book-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:12px;letter-spacing:1px;}
+    .field-row{display:flex;gap:10px;margin-bottom:10px;}
+    .field-row:last-child{margin-bottom:0;}
+    .field-wrap{flex:1;display:flex;flex-direction:column;gap:5px;}
+    .field-label{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1.5px;}
+    .fi{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:2px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;padding:11px 14px;outline:none;transition:all .15s;text-align:center;}
+    .fi:focus{border-color:rgba(0,220,110,0.5);background:rgba(0,220,110,0.04);}
+    .fi::placeholder{color:rgba(255,255,255,0.2);font-size:13px;font-weight:400;}
+    .fi.auto{background:rgba(0,220,110,0.08);border-color:rgba(0,220,110,0.3);color:#00dc6e;}
+    .fi-book{font-size:12px;text-align:left;padding:10px 14px;}
+    .implied{font-size:10px;color:rgba(255,255,255,0.3);text-align:center;margin-top:4px;}
+    .mode-btn{flex:1;padding:9px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.4);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:1px;font-weight:600;}
+    .mode-btn:first-child{border-radius:2px 0 0 2px;}
+    .mode-btn:last-child{border-radius:0 2px 2px 0;border-left:none;}
+    .mode-btn.active{background:rgba(0,220,110,0.15);border-color:#00dc6e;color:#00dc6e;}
+    .result-section{border-radius:2px;padding:20px;margin-bottom:12px;transition:opacity .3s;}
+    .result-arb{background:rgba(0,220,110,0.07);border:1px solid rgba(0,220,110,0.25);}
+    .result-noarb{background:rgba(255,77,77,0.05);border:1px solid rgba(255,77,77,0.15);}
+    .big-number{font-family:'Syne',sans-serif;font-weight:800;}
+    .stat-row{display:flex;gap:8px;margin-top:14px;}
+    .stat-box{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:2px;padding:11px 8px;text-align:center;}
+    .stat-box .sl{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1.5px;margin-bottom:5px;}
+    .stat-box .sv{font-size:17px;font-weight:700;font-family:'Syne',sans-serif;}
+    .payout-row{display:flex;gap:8px;margin-top:10px;}
+    .payout-box{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:10px;text-align:center;}
+    .payout-box .pl{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:4px;}
+    .payout-box .pv{font-size:14px;font-weight:700;color:#00dc6e;}
+    .divider{height:1px;background:rgba(255,255,255,0.06);margin:14px 0;}
+    .tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;}
+    .tag-arb{background:rgba(0,220,110,0.15);border:1px solid rgba(0,220,110,0.3);color:#00dc6e;}
+    .tag-noarb{background:rgba(255,77,77,0.1);border:1px solid rgba(255,77,77,0.25);color:#ff6b6b;}
+    .arrow-divider{text-align:center;padding:4px 0;font-size:16px;color:rgba(255,255,255,0.15);}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+function toDecimal(raw, mode) {
+  if (!raw || raw.trim() === "" || raw.trim() === "-") return null;
+  if (mode === "decimal") {
+    const n = parseFloat(raw);
+    return (!isNaN(n) && n > 1) ? n : null;
+  }
+  const n = parseFloat(raw);
+  if (isNaN(n)) return null;
+  if (n > 0) return (n / 100) + 1;
+  if (n < 0) return (100 / Math.abs(n)) + 1;
+  return null;
+}
+
+function impliedPct(decimal) {
+  if (!decimal) return null;
+  return (1 / decimal * 100).toFixed(1);
+}
+
+function fmt(n) {
+  return "$" + n.toFixed(2);
+}
+
+function ArbCalc() {
+  const [mode, setMode]   = useState("american");
+  const [book1, setBook1] = useState("");
+  const [book2, setBook2] = useState("");
+  const [odds1, setOdds1] = useState("");
+  const [odds2, setOdds2] = useState("");
+  const [stake1, setStake1] = useState("");
+  const [show, setShow]   = useState(false);
+
+  const d1 = toDecimal(odds1, mode);
+  const d2 = toDecimal(odds2, mode);
+  const s1 = parseFloat(stake1);
+
+  // Core arb math
+  // For a true arb: stake2 = stake1 * d1 / d2
+  // This makes payout equal on both sides
+  // Profit = stake1 * d1 - (stake1 + stake2)
+
+  const hasOdds  = d1 && d2;
+  const hasStake = hasOdds && !isNaN(s1) && s1 > 0;
+
+  // Arb percentage (combined implied)
+  const arbPct   = hasOdds ? ((1/d1) + (1/d2)) * 100 : null;
+  const isArb    = arbPct !== null && arbPct < 100;
+
+  // Auto calculated stake for book 2
+  const stake2   = hasStake ? (s1 * d1) / d2 : null;
+  const totalStaked = hasStake && stake2 ? s1 + stake2 : null;
+
+  // Payout on either outcome
+  const payout1  = hasStake ? s1 * d1 : null;         // if outcome 1 wins
+  const payout2  = hasStake && stake2 ? stake2 * d2 : null; // if outcome 2 wins
+
+  // Profit (should be equal on both sides if true arb)
+  const profit   = hasStake && totalStaked && isArb ? payout1 - totalStaked : null;
+  const roi      = profit && totalStaked ? (profit / totalStaked * 100) : null;
+
+  useEffect(() => {
+    if (hasOdds) { setShow(false); setTimeout(() => setShow(true), 20); }
+  }, [odds1, odds2, stake1, hasOdds]);
+
+  const placeholder = mode === "american" ? "-110" : "1.91";
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0a0d0f",backgroundImage:"radial-gradient(ellipse at 70% 0%,rgba(0,160,255,0.04) 0%,transparent 50%)",padding:"24px 16px",display:"flex",justifyContent:"center"}}>
+      <div style={{width:"100%",maxWidth:500}}>
+
+        {/* Header */}
+        <div style={{marginBottom:28,textAlign:"center"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:28,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>
+            <span style={{color:"#00dc6e"}}>ARB</span> CALCULATOR
+          </div>
+          <div style={{marginTop:8,fontSize:11,color:"rgba(255,255,255,0.3)",letterSpacing:"2px",textTransform:"uppercase"}}>
+            The +EV Cave · Risk-Free Profit Finder
+          </div>
+        </div>
+
+        {/* Odds format */}
+        <div className="card">
+          <div className="label-sm">ODDS FORMAT</div>
+          <div style={{display:"flex"}}>
+            <button className={"mode-btn"+(mode==="american"?" active":"")} onClick={()=>setMode("american")}>AMERICAN (+/-)</button>
+            <button className={"mode-btn"+(mode==="decimal"?" active":"")} onClick={()=>setMode("decimal")}>DECIMAL</button>
+          </div>
+        </div>
+
+        {/* Book 1 */}
+        <div className={`book-block ${isArb&&hasStake?"arb-active":""}`}>
+          <div className="book-title">BOOK 1</div>
+          <div className="field-row">
+            <div className="field-wrap">
+              <div className="field-label">SPORTSBOOK NAME</div>
+              <input className="fi fi-book" type="text" placeholder="e.g. DraftKings"
+                value={book1} onChange={e=>setBook1(e.target.value)}/>
+            </div>
+          </div>
+          <div className="field-row">
+            <div className="field-wrap">
+              <div className="field-label">ODDS</div>
+              <input className="fi" type="text" inputMode="decimal"
+                placeholder={placeholder}
+                value={odds1} onChange={e=>setOdds1(e.target.value)}/>
+              {d1&&<div className="implied">{impliedPct(d1)}% implied prob · {d1.toFixed(3)} decimal</div>}
+            </div>
+            <div className="field-wrap">
+              <div className="field-label">YOUR BET AMOUNT</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:16,color:"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span>
+                <input className="fi" type="number" min="1" step="1"
+                  placeholder="100"
+                  value={stake1} onChange={e=>setStake1(e.target.value)}
+                  style={{flex:1}}/>
+              </div>
+              {payout1&&<div className="implied">Returns {fmt(payout1)} if win</div>}
+            </div>
+          </div>
+        </div>
+
+        <div className="arrow-divider">↕</div>
+
+        {/* Book 2 */}
+        <div className={`book-block ${isArb&&hasStake?"arb-active":""}`}>
+          <div className="book-title">BOOK 2</div>
+          <div className="field-row">
+            <div className="field-wrap">
+              <div className="field-label">SPORTSBOOK NAME</div>
+              <input className="fi fi-book" type="text" placeholder="e.g. FanDuel"
+                value={book2} onChange={e=>setBook2(e.target.value)}/>
+            </div>
+          </div>
+          <div className="field-row">
+            <div className="field-wrap">
+              <div className="field-label">ODDS</div>
+              <input className="fi" type="text" inputMode="decimal"
+                placeholder={placeholder}
+                value={odds2} onChange={e=>setOdds2(e.target.value)}/>
+              {d2&&<div className="implied">{impliedPct(d2)}% implied prob · {d2.toFixed(3)} decimal</div>}
+            </div>
+            <div className="field-wrap">
+              <div className="field-label">BET AMOUNT NEEDED</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:16,color:stake2?"#00dc6e":"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span>
+                <div className={`fi ${stake2?"auto":""}`} style={{
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  cursor:"default",height:44,
+                }}>
+                  {stake2 ? stake2.toFixed(2) : <span style={{fontSize:13,fontWeight:400,color:"rgba(255,255,255,0.2)"}}>auto-calculated</span>}
+                </div>
+              </div>
+              {payout2&&<div className="implied" style={{color:"rgba(0,220,110,0.5)"}}>Returns {fmt(payout2)} if win</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Result */}
+        {hasOdds && show && (
+          <div className={`result-section ${isArb?"result-arb":"result-noarb"}`}>
+
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+              <div>
+                <span className={`tag ${isArb?"tag-arb":"tag-noarb"}`}>
+                  {isArb?"✓ ARB FOUND":"✗ NO ARB"}
+                </span>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginBottom:2}}>COMBINED IMPLIED</div>
+                <div className="big-number" style={{fontSize:22,color:isArb?"#00dc6e":"#ff6b6b"}}>
+                  {arbPct.toFixed(2)}%
+                </div>
+              </div>
+            </div>
+
+            {isArb && (
+              <div style={{marginTop:6,fontSize:11,color:"rgba(255,255,255,0.4)"}}>
+                {(100-arbPct).toFixed(2)}% margin below 100% — guaranteed profit on any outcome
+              </div>
+            )}
+
+            {!isArb && (
+              <div style={{marginTop:8,fontSize:11,color:"rgba(255,255,255,0.35)"}}>
+                Combined odds are {(arbPct-100).toFixed(2)}% over 100%. No guaranteed profit. Try finding better odds on one side.
+              </div>
+            )}
+
+            {isArb && hasStake && profit !== null && (
+              <>
+                <div className="divider"/>
+
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px",marginBottom:10}}>GUARANTEED PROFIT REGARDLESS OF OUTCOME</div>
+
+                <div className="stat-row">
+                  <div className="stat-box">
+                    <div className="sl">TOTAL STAKED</div>
+                    <div className="sv" style={{color:"#fff"}}>{fmt(totalStaked)}</div>
+                  </div>
+                  <div className="stat-box">
+                    <div className="sl">PROFIT</div>
+                    <div className="sv" style={{color:"#00dc6e"}}>{fmt(profit)}</div>
+                  </div>
+                  <div className="stat-box">
+                    <div className="sl">ROI</div>
+                    <div className="sv" style={{color:"#00dc6e"}}>{roi.toFixed(2)}%</div>
+                  </div>
+                </div>
+
+                <div className="divider"/>
+
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1px",marginBottom:8}}>PAYOUT CHECK</div>
+                <div className="payout-row">
+                  <div className="payout-box">
+                    <div className="pl">{book1||"BOOK 1"} WINS</div>
+                    <div className="pv">{fmt(payout1)}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.25)",marginTop:3}}>profit {fmt(payout1-totalStaked)}</div>
+                  </div>
+                  <div className="payout-box">
+                    <div className="pl">{book2||"BOOK 2"} WINS</div>
+                    <div className="pv">{fmt(payout2)}</div>
+                    <div style={{fontSize:9,color:"rgba(255,255,255,0.25)",marginTop:3}}>profit {fmt(payout2-totalStaked)}</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {isArb && !hasStake && (
+              <div style={{marginTop:12,fontSize:11,color:"rgba(255,255,255,0.35)"}}>
+                Enter your bet amount on Book 1 to see the required stake for Book 2 and your guaranteed profit.
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{marginTop:12,textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"1px",paddingBottom:24}}>
+          THE +EV CAVE · ARB CALCULATOR · NOT FINANCIAL ADVICE
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ArbCalc/>);
+</script>
+</body>
+</html>
