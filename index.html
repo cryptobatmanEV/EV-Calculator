@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cave Calculators | The +EV Cave</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#0a0d0f;font-family:'IBM Plex Mono',monospace;color:#fff;}
+    .tab-bar{display:flex;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:20px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .tab-bar::-webkit-scrollbar{display:none;}
+    .tab-btn{flex:1;min-width:80px;padding:13px 8px;background:transparent;border:none;color:rgba(255,255,255,0.35);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
+    .tab-btn:hover{color:rgba(255,255,255,0.6);}
+    .tab-btn.active{color:#00dc6e;border-bottom-color:#00dc6e;}
+    .card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:16px 20px;margin-bottom:12px;}
+    .label-sm{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;margin-bottom:12px;}
+    .tool-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:2px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;padding:13px 16px;outline:none;transition:all .15s;text-align:center;}
+    .tool-input:focus{border-color:rgba(0,220,110,0.5);background:rgba(0,220,110,0.04);}
+    .tool-input::placeholder{color:rgba(255,255,255,0.2);font-size:13px;font-weight:400;}
+    .tool-input.pass{border-color:#00dc6e;}
+    .tool-input.fail{border-color:#ff4d4d;}
+    .tool-input.auto-fill{background:rgba(0,220,110,0.08);border-color:rgba(0,220,110,0.3);color:#00dc6e;}
+    .pill-btn{background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.45);padding:7px 14px;border-radius:2px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.5px;transition:all .15s;white-space:nowrap;}
+    .pill-btn:hover{border-color:rgba(0,220,110,0.4);color:rgba(255,255,255,0.7);}
+    .pill-btn.active{background:rgba(0,220,110,0.12);border-color:#00dc6e;color:#00dc6e;}
+    .mode-btn{flex:1;padding:10px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.4);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:1px;}
+    .mode-btn:first-child{border-radius:2px 0 0 2px;}
+    .mode-btn:last-child{border-radius:0 2px 2px 0;border-left:none;}
+    .mode-btn.active{background:rgba(0,220,110,0.15);border-color:#00dc6e;color:#00dc6e;font-weight:700;}
+    .stat-pill{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:2px;padding:10px 16px;flex:1;text-align:center;}
+    .hint{font-size:10px;color:rgba(255,255,255,0.25);text-align:center;margin-top:4px;}
+    .result-box{border-radius:2px;padding:24px;text-align:center;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s;}
+    .result-box.show{opacity:1;transform:translateY(0);}
+    .result-pass{background:rgba(0,220,110,0.1);border:1px solid rgba(0,220,110,0.35);}
+    .result-fail{background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.3);}
+    .result-neutral{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);}
+    .leg-badge{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+    .badge-neutral{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);}
+    .badge-pass{background:rgba(0,220,110,0.2);color:#00dc6e;}
+    .badge-fail{background:rgba(255,77,77,0.2);color:#ff6b6b;}
+    .book-block{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:14px 16px;margin-bottom:10px;}
+    .book-block.arb-active{border-color:rgba(0,220,110,0.25);background:rgba(0,220,110,0.03);}
+    .book-title{font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:12px;letter-spacing:1px;}
+    .field-row{display:flex;gap:10px;margin-bottom:10px;}
+    .field-row:last-child{margin-bottom:0;}
+    .field-wrap{flex:1;display:flex;flex-direction:column;gap:5px;}
+    .field-label{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1.5px;}
+    .fi{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:2px;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;padding:11px 14px;outline:none;transition:all .15s;text-align:center;}
+    .fi:focus{border-color:rgba(0,220,110,0.5);background:rgba(0,220,110,0.04);}
+    .fi::placeholder{color:rgba(255,255,255,0.2);font-size:13px;font-weight:400;}
+    .fi-book{font-size:12px;text-align:left;padding:10px 14px;}
+    .implied{font-size:10px;color:rgba(255,255,255,0.3);text-align:center;margin-top:4px;}
+    .result-section{border-radius:2px;padding:20px;margin-bottom:12px;}
+    .result-arb{background:rgba(0,220,110,0.07);border:1px solid rgba(0,220,110,0.25);}
+    .result-noarb{background:rgba(255,77,77,0.05);border:1px solid rgba(255,77,77,0.15);}
+    .stat-row{display:flex;gap:8px;margin-top:14px;}
+    .stat-box{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:2px;padding:11px 8px;text-align:center;}
+    .stat-box .sl{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1.5px;margin-bottom:5px;}
+    .stat-box .sv{font-size:17px;font-weight:700;font-family:'Syne',sans-serif;}
+    .payout-row{display:flex;gap:8px;margin-top:10px;}
+    .payout-box{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:10px;text-align:center;}
+    .payout-box .pl{font-size:9px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:4px;}
+    .payout-box .pv{font-size:14px;font-weight:700;color:#00dc6e;}
+    .divider{height:1px;background:rgba(255,255,255,0.06);margin:14px 0;}
+    .tag{display:inline-block;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:1px;}
+    .tag-green{background:rgba(0,220,110,0.15);border:1px solid rgba(0,220,110,0.3);color:#00dc6e;}
+    .tag-red{background:rgba(255,77,77,0.1);border:1px solid rgba(255,77,77,0.25);color:#ff6b6b;}
+    .tag-blue{background:rgba(80,140,255,0.12);border:1px solid rgba(80,140,255,0.3);color:#80a8ff;}
+    .arrow-divider{text-align:center;padding:4px 0;font-size:16px;color:rgba(255,255,255,0.15);}
+    .big-number{font-family:'Syne',sans-serif;font-weight:800;}
+    .add-btn{width:100%;padding:11px;background:transparent;border:1px dashed rgba(255,255,255,0.15);border-radius:2px;color:rgba(255,255,255,0.4);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:1px;}
+    .add-btn:hover{border-color:rgba(0,220,110,0.3);color:#00dc6e;}
+    .remove-btn{width:28px;height:28px;background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.2);border-radius:2px;color:#ff6b6b;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;}
+    .remove-btn:hover{background:rgba(255,77,77,0.15);}
+    .leg-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+    .devig-side{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:14px 16px;margin-bottom:10px;}
+    .kelly-range{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+    .kelly-option{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:2px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;}
+    .kelly-option .ko-label{font-size:11px;color:rgba(255,255,255,0.5);}
+    .kelly-option .ko-pct{font-size:11px;color:rgba(255,255,255,0.3);}
+    .kelly-option .ko-amt{font-size:18px;font-weight:700;font-family:'Syne',sans-serif;color:#00dc6e;}
+    .kelly-option.full{border-color:rgba(0,220,110,0.2);background:rgba(0,220,110,0.04);}
+    .kelly-option.half{border-color:rgba(255,200,0,0.2);background:rgba(255,200,0,0.03);}
+    .kelly-option.half .ko-amt{color:#ffc800;}
+    .kelly-option.quarter{border-color:rgba(255,255,255,0.1);}
+    .kelly-option.quarter .ko-amt{color:rgba(255,255,255,0.6);}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// ── Shared math ───────────────────────────────────────────────────────────────
+function toDecimal(raw) {
+  if (!raw || raw.toString().trim() === "" || raw.toString().trim() === "-") return null;
+  const n = parseFloat(raw);
+  if (isNaN(n)) return null;
+  if (n > 0) return (n / 100) + 1;
+  if (n < 0) return (100 / Math.abs(n)) + 1;
+  return null;
+}
+function toAmerican(decimal) {
+  if (!decimal || decimal <= 1) return null;
+  if (decimal >= 2) return "+" + Math.round((decimal - 1) * 100);
+  return "-" + Math.round(100 / (decimal - 1));
+}
+function oddsToProb(odds) {
+  const n = parseFloat(odds);
+  if (isNaN(n)) return null;
+  if (n < 0) return (Math.abs(n) / (Math.abs(n) + 100)) * 100;
+  return (100 / (n + 100)) * 100;
+}
+function fmt(n) { return "$" + Math.abs(n).toFixed(2); }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 1. EV CALCULATOR
+// ══════════════════════════════════════════════════════════════════════════════
+const APP_CONFIG = {
+  PrizePicks:{slipTypes:[
+    {label:"3-Leg Power", legs:3,type:"Power",threshold:58.33,thresholdOdds:-140,thresholdPct:55.0},
+    {label:"5/6-Leg Flex",legs:5,type:"Flex", threshold:57.63,thresholdOdds:-136,thresholdPct:54.3},
+  ]},
+  Underdog:{slipTypes:[
+    {label:"3-Leg Power",legs:3,type:"Power",threshold:56.52,thresholdOdds:-130,thresholdPct:55.0},
+    {label:"6-Leg Flex", legs:6,type:"Flex", threshold:56.52,thresholdOdds:-130,thresholdPct:53.8},
+  ]},
+  Betr:{slipTypes:[
+    {label:"3-Leg Power",legs:3,type:"Power",threshold:58.33,thresholdOdds:-140,thresholdPct:55.0},
+    {label:"5-Leg Flex", legs:5,type:"Flex", threshold:57.63,thresholdOdds:-136,thresholdPct:54.2},
+  ]},
+  Dabble:{slipTypes:[
+    {label:"3-Leg Power",legs:3,type:"Power",threshold:58.33,thresholdOdds:-140,thresholdPct:55.0},
+    {label:"5-Leg Power",legs:5,type:"Power",threshold:58.33,thresholdOdds:-140,thresholdPct:55.0},
+  ]},
+  "DraftKings Pick 6":{slipTypes:[
+    {label:"3-Leg Power",legs:3,type:"Power",threshold:58.33,thresholdOdds:-140,thresholdPct:55.0},
+  ]},
+  "Parlayplay / Sleeper / Fliff":{slipTypes:[
+    {label:"Any Props (2% EV+)",legs:1,type:"EV",threshold:2.0,thresholdOdds:null,thresholdPct:2.0,evMode:true},
+  ]},
+};
+const APPS = Object.keys(APP_CONFIG);
+
+function EVCalculator() {
+  const [selectedApp,setApp]      = useState("PrizePicks");
+  const [slipIdx,setSlipIdx]      = useState(0);
+  const [inputMode,setInputMode]  = useState("odds");
+  const [props,setProps]          = useState(["","",""]);
+  const [animate,setAnimate]      = useState(false);
+  const slip    = APP_CONFIG[selectedApp].slipTypes[slipIdx];
+  const isEV    = slip.evMode;
+  const numLegs = isEV?1:slip.legs;
+  useEffect(()=>{setProps(Array(numLegs).fill(""));setSlipIdx(0);},[selectedApp]);
+  useEffect(()=>{setProps(Array(numLegs).fill(""));},[slipIdx,inputMode]);
+  const handleChange=(i,v)=>{const u=[...props];u[i]=v;setProps(u);};
+  const legEvals=props.map(v=>{
+    if(v===""||v==="-")return null;
+    if(isEV){const n=parseFloat(v);return isNaN(n)?null:{value:n,prob:n,pass:n>=slip.threshold};}
+    if(inputMode==="odds"){const prob=oddsToProb(v);if(prob===null)return null;return{value:parseFloat(v),prob,pass:prob>=slip.threshold};}
+    const n=parseFloat(v);if(isNaN(n))return null;return{value:n,prob:n,pass:n>=slip.thresholdPct};
+  });
+  const allFilled=legEvals.length===numLegs&&legEvals.every(e=>e!==null);
+  const avgProb=allFilled&&!isEV?legEvals.reduce((a,b)=>a+b.prob,0)/legEvals.length:null;
+  const thr=inputMode==="odds"?slip.threshold:slip.thresholdPct;
+  const overallPass=allFilled&&(isEV?legEvals[0].prob>=slip.threshold:avgProb>=thr);
+  useEffect(()=>{if(allFilled){setAnimate(false);setTimeout(()=>setAnimate(true),10);}},[allFilled,overallPass,props.join(",")]);
+  const dispThr=isEV?"2% EV+":inputMode==="odds"?`${slip.thresholdOdds} or better`:`${slip.thresholdPct}%+`;
+  const cols=numLegs<=3?numLegs:3;
+  return(<div>
+    <div className="card">
+      <div className="label-sm">INPUT MODE</div>
+      <div style={{display:"flex"}}>
+        <button className={"mode-btn"+(inputMode==="odds"?" active":"")} onClick={()=>setInputMode("odds")}>AMERICAN ODDS (+/-)</button>
+        <button className={"mode-btn"+(inputMode==="pct"?" active":"")} onClick={()=>setInputMode("pct")}>% PROBABILITY</button>
+      </div>
+      <div style={{marginTop:8,fontSize:10,color:"rgba(255,255,255,0.25)"}}>
+        {inputMode==="odds"?"Enter American odds from your sportsbook, e.g. -145 or +110":"Enter implied probability % from DGF, e.g. 56.5"}
+      </div>
+    </div>
+    <div className="card">
+      <div className="label-sm">SELECT APP</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+        {APPS.map(app=><button key={app} className={"pill-btn"+(selectedApp===app?" active":"")} onClick={()=>{setApp(app);setSlipIdx(0);}}>{app}</button>)}
+      </div>
+    </div>
+    <div className="card">
+      <div className="label-sm">SLIP TYPE</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:14}}>
+        {APP_CONFIG[selectedApp].slipTypes.map((s,i)=><button key={i} className={"pill-btn"+(slipIdx===i?" active":"")} onClick={()=>setSlipIdx(i)}>{s.label}</button>)}
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <div className="stat-pill"><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px"}}>MIN THRESHOLD</div><div style={{fontSize:14,fontWeight:700,color:"#00dc6e",marginTop:3}}>{dispThr}</div></div>
+        <div className="stat-pill"><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px"}}>TYPE</div><div style={{fontSize:14,fontWeight:700,color:"#fff",marginTop:3}}>{slip.type}</div></div>
+        {!isEV&&<div className="stat-pill"><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px"}}>LEGS</div><div style={{fontSize:14,fontWeight:700,color:"#fff",marginTop:3}}>{slip.legs}</div></div>}
+      </div>
+    </div>
+    <div className="card">
+      <div className="label-sm">{isEV?"ENTER EV %":inputMode==="odds"?"ENTER AMERICAN ODDS PER LEG":"ENTER % PROBABILITY PER LEG"}</div>
+      <div style={{display:"grid",gridTemplateColumns:`repeat(${cols},1fr)`,gap:10}}>
+        {props.map((val,i)=>{
+          const ev=legEvals[i];const hasV=ev!==null;const pass=hasV&&ev.pass;
+          return(<div key={i} style={{display:"flex",flexDirection:"column",gap:6}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div className={`leg-badge ${!hasV?"badge-neutral":pass?"badge-pass":"badge-fail"}`}>{i+1}</div>
+              <span style={{fontSize:10,color:"rgba(255,255,255,0.25)"}}>LEG {i+1}</span>
+            </div>
+            <input type="text" inputMode="decimal" className={`tool-input ${!hasV?"":pass?"pass":"fail"}`}
+              placeholder={inputMode==="odds"?"-145":"56.5"} value={val} onChange={e=>handleChange(i,e.target.value)}/>
+            {hasV&&inputMode==="odds"&&<div className="hint">{ev.prob.toFixed(1)}% implied</div>}
+          </div>);
+        })}
+      </div>
+    </div>
+    {allFilled&&<div className={`result-box ${animate?"show":""} ${overallPass?"result-pass":"result-fail"}`}>
+      <div style={{fontSize:32,fontFamily:"'Syne',sans-serif",fontWeight:800,letterSpacing:"-0.5px",color:overallPass?"#00dc6e":"#ff6b6b"}}>{overallPass?"✓ PLAY IT":"✗ SKIP IT"}</div>
+      <div style={{marginTop:6,fontSize:12,color:"rgba(255,255,255,0.5)"}}>{overallPass?`Avg meets ${dispThr} threshold. This slip is +EV.`:`Avg falls below ${dispThr}. Don't force it.`}</div>
+      {!isEV&&avgProb!==null&&<div style={{marginTop:16,display:"flex",justifyContent:"center",gap:24}}>
+        <div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px"}}>AVG</div><div style={{fontSize:20,fontWeight:700,color:"#fff",marginTop:2}}>{avgProb.toFixed(1)}%</div></div>
+        <div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px"}}>NEED</div><div style={{fontSize:20,fontWeight:700,color:"rgba(255,255,255,0.5)",marginTop:2}}>{inputMode==="odds"?`${slip.threshold.toFixed(1)}%`:`${slip.thresholdPct}%`}</div></div>
+        <div><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px"}}>EDGE</div><div style={{fontSize:20,fontWeight:700,marginTop:2,color:overallPass?"#00dc6e":"#ff6b6b"}}>{inputMode==="odds"?`${(avgProb-slip.threshold).toFixed(2)}%`:`${(avgProb-slip.thresholdPct).toFixed(2)}%`}</div></div>
+      </div>}
+    </div>}
+    <div style={{marginTop:16,textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"1px"}}>BASED ON "JOINING THE 5%" THRESHOLDS · NOT FINANCIAL ADVICE</div>
+  </div>);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 2. ARB CALCULATOR
+// ══════════════════════════════════════════════════════════════════════════════
+function ArbCalculator() {
+  const [mode,setMode]     = useState("american");
+  const [book1,setBook1]   = useState("");
+  const [book2,setBook2]   = useState("");
+  const [odds1,setOdds1]   = useState("");
+  const [odds2,setOdds2]   = useState("");
+  const [stake1,setStake1] = useState("");
+  const [show,setShow]     = useState(false);
+  function getD(raw){
+    if(!raw||raw.trim()===""||raw.trim()==="-")return null;
+    if(mode==="decimal"){const n=parseFloat(raw);return(!isNaN(n)&&n>1)?n:null;}
+    return toDecimal(raw);
+  }
+  const d1=getD(odds1),d2=getD(odds2),s1=parseFloat(stake1);
+  const hasOdds=d1&&d2,hasStake=hasOdds&&!isNaN(s1)&&s1>0;
+  const arbPct=hasOdds?((1/d1)+(1/d2))*100:null;
+  const isArb=arbPct!==null&&arbPct<100;
+  const stake2=hasStake?(s1*d1)/d2:null;
+  const totalStaked=hasStake&&stake2?s1+stake2:null;
+  const payout1=hasStake?s1*d1:null,payout2=hasStake&&stake2?stake2*d2:null;
+  const profit=hasStake&&totalStaked&&isArb?payout1-totalStaked:null;
+  const roi=profit&&totalStaked?(profit/totalStaked*100):null;
+  useEffect(()=>{if(hasOdds){setShow(false);setTimeout(()=>setShow(true),20);}},[odds1,odds2,stake1,hasOdds]);
+  const ph=mode==="american"?"-110":"1.91";
+  return(<div>
+    <div className="card">
+      <div className="label-sm">ODDS FORMAT</div>
+      <div style={{display:"flex"}}>
+        <button className={"mode-btn"+(mode==="american"?" active":"")} onClick={()=>setMode("american")}>AMERICAN (+/-)</button>
+        <button className={"mode-btn"+(mode==="decimal"?" active":"")} onClick={()=>setMode("decimal")}>DECIMAL</button>
+      </div>
+    </div>
+    <div className={`book-block ${isArb&&hasStake?"arb-active":""}`}>
+      <div className="book-title">BOOK 1</div>
+      <div className="field-row"><div className="field-wrap"><div className="field-label">SPORTSBOOK</div><input className="fi fi-book" type="text" placeholder="e.g. DraftKings" value={book1} onChange={e=>setBook1(e.target.value)}/></div></div>
+      <div className="field-row">
+        <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="decimal" placeholder={ph} value={odds1} onChange={e=>setOdds1(e.target.value)}/>{d1&&<div className="implied">{(1/d1*100).toFixed(1)}% implied · {d1.toFixed(3)} decimal</div>}</div>
+        <div className="field-wrap"><div className="field-label">YOUR BET AMOUNT</div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16,color:"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span><input className="fi" type="number" min="1" placeholder="100" value={stake1} onChange={e=>setStake1(e.target.value)} style={{flex:1}}/></div>{payout1&&<div className="implied">Returns {fmt(payout1)} if win</div>}</div>
+      </div>
+    </div>
+    <div className="arrow-divider">↕</div>
+    <div className={`book-block ${isArb&&hasStake?"arb-active":""}`}>
+      <div className="book-title">BOOK 2</div>
+      <div className="field-row"><div className="field-wrap"><div className="field-label">SPORTSBOOK</div><input className="fi fi-book" type="text" placeholder="e.g. FanDuel" value={book2} onChange={e=>setBook2(e.target.value)}/></div></div>
+      <div className="field-row">
+        <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="decimal" placeholder={ph} value={odds2} onChange={e=>setOdds2(e.target.value)}/>{d2&&<div className="implied">{(1/d2*100).toFixed(1)}% implied · {d2.toFixed(3)} decimal</div>}</div>
+        <div className="field-wrap"><div className="field-label">BET NEEDED</div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16,color:stake2?"#00dc6e":"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span><div className={`fi ${stake2?"auto-fill":""}`} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"default",height:46,flex:1}}>{stake2?stake2.toFixed(2):<span style={{fontSize:13,fontWeight:400,color:"rgba(255,255,255,0.2)"}}>auto-calculated</span>}</div></div>{payout2&&<div className="implied" style={{color:"rgba(0,220,110,0.5)"}}>Returns {fmt(payout2)} if win</div>}</div>
+      </div>
+    </div>
+    {hasOdds&&show&&<div className={`result-section ${isArb?"result-arb":"result-noarb"}`}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+        <span className={`tag ${isArb?"tag-green":"tag-red"}`}>{isArb?"✓ ARB FOUND":"✗ NO ARB"}</span>
+        <div style={{textAlign:"right"}}><div style={{fontSize:10,color:"rgba(255,255,255,0.3)",marginBottom:2}}>COMBINED IMPLIED</div><div className="big-number" style={{fontSize:24,color:isArb?"#00dc6e":"#ff6b6b"}}>{arbPct.toFixed(2)}%</div></div>
+      </div>
+      {isArb&&<div style={{marginTop:6,fontSize:11,color:"rgba(255,255,255,0.4)"}}>{(100-arbPct).toFixed(2)}% margin — guaranteed profit on any outcome</div>}
+      {!isArb&&<div style={{marginTop:8,fontSize:11,color:"rgba(255,255,255,0.35)"}}>{(arbPct-100).toFixed(2)}% over 100%. Try finding better odds on one side.</div>}
+      {isArb&&hasStake&&profit!==null&&<>
+        <div className="divider"/>
+        <div className="stat-row">
+          <div className="stat-box"><div className="sl">TOTAL STAKED</div><div className="sv" style={{color:"#fff"}}>{fmt(totalStaked)}</div></div>
+          <div className="stat-box"><div className="sl">PROFIT</div><div className="sv" style={{color:"#00dc6e"}}>{fmt(profit)}</div></div>
+          <div className="stat-box"><div className="sl">ROI</div><div className="sv" style={{color:"#00dc6e"}}>{roi.toFixed(2)}%</div></div>
+        </div>
+        <div className="divider"/>
+        <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1px",marginBottom:8}}>PAYOUT CHECK</div>
+        <div className="payout-row">
+          <div className="payout-box"><div className="pl">{book1||"BOOK 1"} WINS</div><div className="pv">{fmt(payout1)}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.25)",marginTop:3}}>profit {fmt(payout1-totalStaked)}</div></div>
+          <div className="payout-box"><div className="pl">{book2||"BOOK 2"} WINS</div><div className="pv">{fmt(payout2)}</div><div style={{fontSize:9,color:"rgba(255,255,255,0.25)",marginTop:3}}>profit {fmt(payout2-totalStaked)}</div></div>
+        </div>
+      </>}
+      {isArb&&!hasStake&&<div style={{marginTop:12,fontSize:11,color:"rgba(255,255,255,0.35)"}}>Enter your bet amount on Book 1 to see the required stake for Book 2.</div>}
+    </div>}
+    <div style={{marginTop:16,textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"1px"}}>THE +EV CAVE · ARB CALCULATOR · NOT FINANCIAL ADVICE</div>
+  </div>);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 3. DEVIG CALCULATOR
+// ══════════════════════════════════════════════════════════════════════════════
+function DevigCalculator() {
+  const [sides,setSides]     = useState([{odds:""},{odds:""}]);
+  const [show,setShow]       = useState(false);
+
+  const updateOdds=(i,v)=>{const s=[...sides];s[i]={odds:v};setSides(s);};
+  const addSide=()=>{ if(sides.length<4) setSides([...sides,{odds:""}]); };
+  const removeSide=i=>{ if(sides.length>2) setSides(sides.filter((_,idx)=>idx!==i)); };
+
+  const decimals = sides.map(s=>toDecimal(s.odds));
+  const allFilled = decimals.every(d=>d!==null);
+  const totalImpl = allFilled ? decimals.reduce((a,d)=>a+(1/d),0) : 0;
+  const vig       = allFilled ? (totalImpl - 1) * 100 : 0;
+
+  // True (no-vig) probabilities using multiplicative method
+  const trueProbs = allFilled ? decimals.map(d=>(1/d)/totalImpl) : [];
+  const fairOdds  = trueProbs.map(p=>p>0 ? 1/p : null);
+
+  useEffect(()=>{
+    if(allFilled){setShow(false);setTimeout(()=>setShow(true),20);}
+  },[sides.map(s=>s.odds).join(",")]);
+
+  return(<div>
+    <div className="card">
+      <div className="label-sm" style={{marginBottom:6}}>WHAT IS DEVIG?</div>
+      <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6}}>
+        Sportsbooks add a margin (vig) to every line. Devigging removes that margin to reveal the true probability of each outcome. Use this to find the real edge on any bet.
+      </div>
+    </div>
+
+    <div className="card">
+      <div className="label-sm">ENTER ODDS FOR EACH SIDE</div>
+      {sides.map((side,i)=>(
+        <div key={i} className="devig-side" style={{marginBottom:i<sides.length-1?10:0}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",letterSpacing:"1px"}}>SIDE {i+1}</div>
+            {sides.length>2&&<button className="remove-btn" onClick={()=>removeSide(i)}>×</button>}
+          </div>
+          <input className="fi" type="text" inputMode="decimal"
+            placeholder="e.g. -110 or +120"
+            value={side.odds} onChange={e=>updateOdds(i,e.target.value)}/>
+          {decimals[i]&&<div className="implied">
+            {(1/decimals[i]*100).toFixed(2)}% raw implied · {decimals[i].toFixed(3)} decimal
+          </div>}
+        </div>
+      ))}
+      {sides.length<4&&<button className="add-btn" style={{marginTop:10}} onClick={addSide}>+ ADD SIDE (FOR 3-WAY MARKETS)</button>}
+    </div>
+
+    {allFilled&&show&&(
+      <div className="result-section result-neutral" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px",marginBottom:4}}>TOTAL VIG</div>
+            <div className="big-number" style={{fontSize:26,color:vig>5?"#ff6b6b":vig>2?"#ffc800":"#00dc6e"}}>{vig.toFixed(2)}%</div>
+          </div>
+          <span className="tag tag-blue">DEVIGGED</span>
+        </div>
+
+        <div className="divider"/>
+
+        {sides.map((side,i)=>(
+          <div key={i} style={{marginBottom:i<sides.length-1?12:0}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",letterSpacing:"1px"}}>SIDE {i+1} · {side.odds}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <div className="stat-box" style={{flex:1}}>
+                <div className="sl">RAW IMPLIED</div>
+                <div className="sv" style={{color:"rgba(255,255,255,0.5)",fontSize:15}}>{(1/decimals[i]*100).toFixed(2)}%</div>
+              </div>
+              <div style={{display:"flex",alignItems:"center",fontSize:16,color:"rgba(255,255,255,0.2)"}}>→</div>
+              <div className="stat-box" style={{flex:1,borderColor:"rgba(0,220,110,0.2)",background:"rgba(0,220,110,0.04)"}}>
+                <div className="sl">TRUE PROB</div>
+                <div className="sv" style={{color:"#00dc6e",fontSize:15}}>{(trueProbs[i]*100).toFixed(2)}%</div>
+              </div>
+              <div className="stat-box" style={{flex:1}}>
+                <div className="sl">FAIR ODDS</div>
+                <div className="sv" style={{color:"#fff",fontSize:14}}>{fairOdds[i]?toAmerican(fairOdds[i]):"—"}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div style={{marginTop:14,fontSize:11,color:"rgba(255,255,255,0.3)",borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:12}}>
+          Any line better than the fair odds shown above is a +EV bet.
+        </div>
+      </div>
+    )}
+    <div style={{marginTop:16,textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"1px"}}>THE +EV CAVE · DEVIG CALCULATOR · NOT FINANCIAL ADVICE</div>
+  </div>);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 4. KELLY CRITERION CALCULATOR
+// ══════════════════════════════════════════════════════════════════════════════
+function KellyCalculator() {
+  const [bankroll,setBankroll]   = useState("");
+  const [fairOdds,setFairOdds]   = useState("");
+  const [betOdds,setBetOdds]     = useState("");
+  const [show,setShow]           = useState(false);
+
+  const dFair = toDecimal(fairOdds);
+  const dBet  = toDecimal(betOdds);
+  const br    = parseFloat(bankroll);
+
+  // True win probability from fair odds
+  const truePct = dFair ? (1/dFair) : null;
+
+  // Kelly formula: f* = (b*p - q) / b
+  // b = decimal - 1 (profit per unit), p = true prob, q = 1 - p
+  let kelly=null, edge=null;
+  if(dFair&&dBet&&truePct){
+    const b = dBet - 1;
+    const p = truePct;
+    const q = 1 - p;
+    kelly = (b * p - q) / b;
+    edge  = (kelly * b) * 100; // edge as %
+  }
+
+  const hasAll = kelly!==null && !isNaN(br) && br>0;
+  const fullKelly   = hasAll ? br * kelly : null;
+  const halfKelly   = hasAll ? br * kelly * 0.5 : null;
+  const quarterKelly= hasAll ? br * kelly * 0.25 : null;
+
+  useEffect(()=>{
+    if(dFair&&dBet){setShow(false);setTimeout(()=>setShow(true),20);}
+  },[fairOdds,betOdds,bankroll]);
+
+  const isPositive = kelly!==null&&kelly>0;
+
+  return(<div>
+    <div className="card">
+      <div className="label-sm" style={{marginBottom:6}}>HOW IT WORKS</div>
+      <div style={{fontSize:11,color:"rgba(255,255,255,0.4)",lineHeight:1.6}}>
+        Enter the fair (no-vig) odds you calculated from the devig tool, then the actual odds you are being offered. Kelly tells you the mathematically optimal percentage of your bankroll to bet.
+      </div>
+    </div>
+
+    <div className="card">
+      <div className="label-sm">FAIR ODDS (NO-VIG)</div>
+      <input className="tool-input" type="text" inputMode="decimal"
+        placeholder="From devig calculator, e.g. -115"
+        value={fairOdds} onChange={e=>setFairOdds(e.target.value)}/>
+      {dFair&&<div className="hint">{(1/dFair*100).toFixed(2)}% true probability</div>}
+    </div>
+
+    <div className="card">
+      <div className="label-sm">ACTUAL BET ODDS (WHAT THE BOOK IS OFFERING)</div>
+      <input className="tool-input" type="text" inputMode="decimal"
+        placeholder="e.g. -105 or +110"
+        value={betOdds} onChange={e=>setBetOdds(e.target.value)}/>
+      {dBet&&<div className="hint">{(1/dBet*100).toFixed(2)}% implied · {dBet.toFixed(3)} decimal</div>}
+    </div>
+
+    <div className="card">
+      <div className="label-sm">YOUR TOTAL BANKROLL</div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:18,color:"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span>
+        <input className="tool-input" type="number" min="1" placeholder="e.g. 500"
+          value={bankroll} onChange={e=>setBankroll(e.target.value)} style={{flex:1,textAlign:"left",paddingLeft:12}}/>
+      </div>
+    </div>
+
+    {dFair&&dBet&&show&&(
+      <div className={`result-section ${isPositive?"result-arb":"result-noarb"}`}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
+          <div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px",marginBottom:4}}>YOUR EDGE</div>
+            <div className="big-number" style={{fontSize:26,color:isPositive?"#00dc6e":"#ff6b6b"}}>
+              {edge!==null?`${edge.toFixed(2)}%`:"—"}
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px",marginBottom:4}}>KELLY %</div>
+            <div className="big-number" style={{fontSize:26,color:isPositive?"#00dc6e":"#ff6b6b"}}>
+              {kelly!==null?`${(kelly*100).toFixed(2)}%`:"—"}
+            </div>
+          </div>
+        </div>
+
+        {!isPositive&&<div style={{fontSize:11,color:"rgba(255,255,255,0.4)"}}>
+          No edge detected. The actual odds offered are worse than the true probability. Do not bet this.
+        </div>}
+
+        {isPositive&&<>
+          <div className="divider"/>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px",marginBottom:10}}>RECOMMENDED BET SIZES</div>
+          <div className="kelly-range">
+            <div className="kelly-option full">
+              <div><div className="ko-label">FULL KELLY</div><div className="ko-pct">{(kelly*100).toFixed(2)}% of bankroll · aggressive</div></div>
+              <div className="ko-amt">{hasAll?fmt(fullKelly):"—"}</div>
+            </div>
+            <div className="kelly-option half">
+              <div><div className="ko-label">HALF KELLY</div><div className="ko-pct">{(kelly*50).toFixed(2)}% of bankroll · recommended</div></div>
+              <div className="ko-amt">{hasAll?fmt(halfKelly):"—"}</div>
+            </div>
+            <div className="kelly-option quarter">
+              <div><div className="ko-label">QUARTER KELLY</div><div className="ko-pct">{(kelly*25).toFixed(2)}% of bankroll · conservative</div></div>
+              <div className="ko-amt">{hasAll?fmt(quarterKelly):"—"}</div>
+            </div>
+          </div>
+          <div style={{marginTop:12,fontSize:11,color:"rgba(255,255,255,0.3)"}}>
+            Half Kelly is the most widely recommended bet size. It gives up some EV in exchange for significantly lower variance.
+          </div>
+        </>}
+      </div>
+    )}
+    <div style={{marginTop:16,textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"1px"}}>THE +EV CAVE · KELLY CRITERION · NOT FINANCIAL ADVICE</div>
+  </div>);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 5. PARLAY CALCULATOR
+// ══════════════════════════════════════════════════════════════════════════════
+function ParlayCalculator() {
+  const [legs,setLegs]     = useState([{odds:"",label:""}]);
+  const [stake,setStake]   = useState("10");
+  const [show,setShow]     = useState(false);
+
+  const updateLeg=(i,field,val)=>{ const l=[...legs]; l[i]={...l[i],[field]:val}; setLegs(l); };
+  const addLeg=()=>{ if(legs.length<12) setLegs([...legs,{odds:"",label:""}]); };
+  const removeLeg=i=>{ if(legs.length>2) setLegs(legs.filter((_,idx)=>idx!==i)); };
+
+  const decimals = legs.map(l=>toDecimal(l.odds));
+  const filledDec = decimals.filter(d=>d!==null);
+  const allFilled = decimals.every(d=>d!==null)&&legs.length>=2;
+  const s = parseFloat(stake)||10;
+
+  const combinedDecimal = filledDec.length>0 ? filledDec.reduce((a,d)=>a*d,1) : 1;
+  const parlayAmerican  = allFilled ? toAmerican(combinedDecimal) : null;
+  const payout          = allFilled ? s * combinedDecimal : null;
+  const profit          = payout ? payout - s : null;
+  const impliedProb     = allFilled ? (1/combinedDecimal)*100 : null;
+
+  useEffect(()=>{
+    if(allFilled){setShow(false);setTimeout(()=>setShow(true),20);}
+  },[legs.map(l=>l.odds).join(","),stake]);
+
+  return(<div>
+    <div className="card">
+      <div className="label-sm">PARLAY LEGS</div>
+      {legs.map((leg,i)=>(
+        <div key={i} className="leg-row">
+          <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",flexShrink:0}}>{i+1}</div>
+          <input className="fi" type="text" placeholder="Team / Player (optional)"
+            value={leg.label} onChange={e=>updateLeg(i,"label",e.target.value)}
+            style={{flex:2,textAlign:"left",fontSize:12,padding:"10px 12px"}}/>
+          <input className="fi" type="text" inputMode="decimal" placeholder="-110"
+            value={leg.odds} onChange={e=>updateLeg(i,"odds",e.target.value)}
+            style={{flex:1}}/>
+          {legs.length>2&&<button className="remove-btn" onClick={()=>removeLeg(i)}>×</button>}
+        </div>
+      ))}
+      {legs.length<12&&<button className="add-btn" onClick={addLeg}>+ ADD LEG</button>}
+    </div>
+
+    <div className="card">
+      <div className="label-sm">STAKE</div>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:18,color:"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span>
+        <input className="tool-input" type="number" min="1" step="1"
+          value={stake} onChange={e=>setStake(e.target.value)}
+          style={{flex:1,textAlign:"left",paddingLeft:12}}/>
+      </div>
+    </div>
+
+    {filledDec.length>=1&&show&&(
+      <div className="result-section" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)"}}>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1.5px",marginBottom:4}}>{filledDec.length}-LEG PARLAY ODDS</div>
+          <div className="big-number" style={{fontSize:32,color:"#00dc6e"}}>{parlayAmerican||"..."}</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.35)",marginTop:4}}>{combinedDecimal.toFixed(3)} decimal · {impliedProb?impliedProb.toFixed(2)+"% implied":""}</div>
+        </div>
+        <div className="divider"/>
+        <div className="stat-row">
+          <div className="stat-box"><div className="sl">STAKE</div><div className="sv" style={{color:"#fff"}}>{fmt(s)}</div></div>
+          <div className="stat-box"><div className="sl">PROFIT</div><div className="sv" style={{color:"#00dc6e"}}>{profit?fmt(profit):"—"}</div></div>
+          <div className="stat-box"><div className="sl">TOTAL PAYOUT</div><div className="sv" style={{color:"#00dc6e"}}>{payout?fmt(payout):"—"}</div></div>
+        </div>
+        {filledDec.length>=2&&(
+          <>
+            <div className="divider"/>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"1px",marginBottom:8}}>LEG BREAKDOWN</div>
+            {legs.map((leg,i)=>decimals[i]&&(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:"1px solid rgba(255,255,255,0.04)",fontSize:11}}>
+                <span style={{color:"rgba(255,255,255,0.5)"}}>{leg.label||`Leg ${i+1}`} · {leg.odds}</span>
+                <span style={{color:"rgba(255,255,255,0.35)"}}>{(1/decimals[i]*100).toFixed(1)}% implied</span>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    )}
+    <div style={{marginTop:16,textAlign:"center",fontSize:10,color:"rgba(255,255,255,0.15)",letterSpacing:"1px"}}>THE +EV CAVE · PARLAY CALCULATOR · NOT FINANCIAL ADVICE</div>
+  </div>);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ROOT APP
+// ══════════════════════════════════════════════════════════════════════════════
+const TABS = [
+  {id:"ev",    label:"+EV",    component:<EVCalculator/>},
+  {id:"arb",   label:"ARB",   component:<ArbCalculator/>},
+  {id:"devig", label:"DEVIG", component:<DevigCalculator/>},
+  {id:"kelly", label:"KELLY", component:<KellyCalculator/>},
+  {id:"parlay",label:"PARLAY",component:<ParlayCalculator/>},
+];
+
+function App() {
+  const [tab,setTab] = useState("ev");
+  const current = TABS.find(t=>t.id===tab);
+  return(
+    <div style={{minHeight:"100vh",background:"#0a0d0f",backgroundImage:"radial-gradient(ellipse at 20% 0%,rgba(0,200,100,0.06) 0%,transparent 50%)"}}>
+      <div style={{textAlign:"center",padding:"28px 16px 0"}}>
+        <div style={{fontFamily:"'Syne',sans-serif",fontSize:26,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>
+          <span style={{color:"#00dc6e"}}>CAVE</span> CALCULATORS
+        </div>
+        <div style={{marginTop:6,fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:"2px",textTransform:"uppercase"}}>
+          The +EV Cave
+        </div>
+      </div>
+      <div style={{padding:"0 16px",maxWidth:580,margin:"0 auto"}}>
+        <div style={{marginTop:20}} className="tab-bar">
+          {TABS.map(t=>(
+            <button key={t.id} className={"tab-btn"+(tab===t.id?" active":"")} onClick={()=>setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        <div style={{paddingBottom:40}}>
+          {current?.component}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
