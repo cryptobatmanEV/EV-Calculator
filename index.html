@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>+EV Calculator | The +EV Cave</title>
+  <meta name="description" content="Free +EV betting calculator. Check if your slip meets the correct threshold for PrizePicks, Underdog, Betr, Dabble, DraftKings Pick 6 and more."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0d0f;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      background-image:
+        radial-gradient(ellipse at 20% 0%, rgba(0,200,100,0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(0,180,90,0.04) 0%, transparent 50%);
+    }
+    .pill-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.45);
+      padding: 7px 14px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .pill-btn:hover { border-color: rgba(0,220,110,0.4); color: rgba(255,255,255,0.7); }
+    .pill-btn.active { background: rgba(0,220,110,0.12); border-color: #00dc6e; color: #00dc6e; }
+    .prop-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 2px;
+      color: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 20px;
+      font-weight: 600;
+      padding: 14px 16px;
+      outline: none;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .prop-input:focus { border-color: rgba(0,220,110,0.5); background: rgba(0,220,110,0.05); }
+    .prop-input.pass { border-color: #00dc6e; }
+    .prop-input.fail { border-color: #ff4d4d; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const APP_CONFIG = {
+      "PrizePicks": {
+        slipTypes: [
+          { label: "3-Leg Power",  legs: 3, type: "Power", threshold: 55.0 },
+          { label: "5/6-Leg Flex", legs: 5, type: "Flex",  threshold: 54.3 },
+        ]
+      },
+      "Underdog": {
+        slipTypes: [
+          { label: "3-Leg Power", legs: 3, type: "Power", threshold: 55.0 },
+          { label: "6-Leg Flex",  legs: 6, type: "Flex",  threshold: 53.8 },
+        ]
+      },
+      "Betr": {
+        slipTypes: [
+          { label: "3-Leg Power", legs: 3, type: "Power", threshold: 55.0 },
+          { label: "5-Leg Flex",  legs: 5, type: "Flex",  threshold: 54.2 },
+        ]
+      },
+      "Dabble": {
+        slipTypes: [
+          { label: "3-Leg Power", legs: 3, type: "Power", threshold: 55.0 },
+          { label: "5-Leg Power", legs: 5, type: "Power", threshold: 55.0 },
+        ]
+      },
+      "DraftKings Pick 6": {
+        slipTypes: [
+          { label: "3-Leg Power", legs: 3, type: "Power", threshold: 55.0 },
+        ]
+      },
+      "Parlayplay / Sleeper / Fliff": {
+        slipTypes: [
+          { label: "Any Props (2% EV+)", legs: 1, type: "EV", threshold: 2.0, evMode: true },
+        ]
+      }
+    };
+
+    const APPS = Object.keys(APP_CONFIG);
+
+    function App() {
+      const [selectedApp, setSelectedApp]         = useState("PrizePicks");
+      const [selectedSlipIdx, setSelectedSlipIdx] = useState(0);
+      const [props, setProps]                     = useState(["","",""]);
+      const [shown, setShown]                     = useState(false);
+
+      const slipTypes = APP_CONFIG[selectedApp].slipTypes;
+      const slip      = slipTypes[selectedSlipIdx];
+      const isEV      = !!slip.evMode;
+
+      useEffect(() => {
+        setSelectedSlipIdx(0);
+        const legs = APP_CONFIG[selectedApp].slipTypes[0].evMode ? 1 : APP_CONFIG[selectedApp].slipTypes[0].legs;
+        setProps(Array(legs).fill(""));
+        setShown(false);
+      }, [selectedApp]);
+
+      useEffect(() => {
+        const legs = slip.evMode ? 1 : slip.legs;
+        setProps(Array(legs).fill(""));
+        setShown(false);
+      }, [selectedSlipIdx]);
+
+      const handleChange = (i, v) => {
+        const u = [...props]; u[i] = v; setProps(u);
+      };
+
+      const vals     = props.map(p => parseFloat(p));
+      const allFilled = vals.every(v => !isNaN(v)) && props.every(p => p !== "");
+      const passing   = vals.map(v => !isNaN(v) && v >= slip.threshold);
+      const allPass   = allFilled && passing.every(Boolean);
+      const avg       = vals.filter(v => !isNaN(v)).reduce((a,b)=>a+b,0) / (vals.filter(v=>!isNaN(v)).length||1);
+
+      useEffect(() => {
+        if (allFilled) { setShown(false); setTimeout(()=>setShown(true), 30); }
+        else setShown(false);
+      }, [allFilled, allPass]);
+
+      const gridCols = props.length <= 3 ? props.length : 3;
+
+      return (
+        <div style={{width:"100%", maxWidth:540, fontFamily:"'IBM Plex Mono',monospace"}}>
+
+          {/* Header */}
+          <div style={{textAlign:"center", marginBottom:28}}>
+            <div style={{fontFamily:"'Syne',sans-serif", fontSize:28, fontWeight:800, color:"#fff", letterSpacing:"-0.5px"}}>
+              <span style={{color:"#00dc6e"}}>+EV</span> CALCULATOR
+            </div>
+            <div style={{marginTop:8, fontSize:11, color:"rgba(255,255,255,0.3)", letterSpacing:"2px"}}>
+              THE +EV CAVE · SLIP THRESHOLD CHECKER
+            </div>
+          </div>
+
+          {/* App selector */}
+          <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:2, padding:"16px 20px", marginBottom:12}}>
+            <div style={{fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"2px", marginBottom:12}}>SELECT APP</div>
+            <div style={{display:"flex", flexWrap:"wrap", gap:8}}>
+              {APPS.map(app => (
+                <button key={app} className={`pill-btn${selectedApp===app?" active":""}`}
+                  onClick={()=>setSelectedApp(app)}>{app}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Slip type */}
+          <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:2, padding:"16px 20px", marginBottom:12}}>
+            <div style={{fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"2px", marginBottom:12}}>SLIP TYPE</div>
+            <div style={{display:"flex", flexWrap:"wrap", gap:8}}>
+              {slipTypes.map((s,i) => (
+                <button key={i} className={`pill-btn${selectedSlipIdx===i?" active":""}`}
+                  onClick={()=>setSelectedSlipIdx(i)}>{s.label}</button>
+              ))}
+            </div>
+            <div style={{marginTop:14, display:"flex", gap:10}}>
+              {[
+                ["THRESHOLD", isEV ? `${slip.threshold}% EV+` : `${slip.threshold}%+`, "#00dc6e"],
+                ["TYPE",      slip.type,                                                  "#fff"],
+                ...(!isEV ? [["LEGS", String(slip.legs), "#fff"]] : [])
+              ].map(([lbl, val, col]) => (
+                <div key={lbl} style={{background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:2, padding:"10px 16px", flex:1, textAlign:"center"}}>
+                  <div style={{fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"1.5px"}}>{lbl}</div>
+                  <div style={{fontSize:18, fontWeight:700, color:col, marginTop:3}}>{val}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Inputs */}
+          <div style={{background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:2, padding:"16px 20px", marginBottom:12}}>
+            <div style={{fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"2px", marginBottom:14}}>
+              {isEV ? "ENTER EV%" : "ENTER PROP % ODDS"}
+            </div>
+            <div style={{display:"grid", gridTemplateColumns:`repeat(${gridCols}, 1fr)`, gap:10}}>
+              {props.map((val, i) => {
+                const num    = parseFloat(val);
+                const hasVal = val !== "" && !isNaN(num);
+                const isPass = hasVal && num >= slip.threshold;
+                const isFail = hasVal && !isPass;
+                return (
+                  <div key={i} style={{display:"flex", flexDirection:"column", gap:6}}>
+                    <div style={{display:"flex", alignItems:"center", gap:6}}>
+                      <div style={{
+                        width:24, height:24, borderRadius:"50%", display:"flex",
+                        alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, flexShrink:0,
+                        background: !hasVal ? "rgba(255,255,255,0.08)" : isPass ? "rgba(0,220,110,0.2)" : "rgba(255,77,77,0.2)",
+                        color:      !hasVal ? "rgba(255,255,255,0.4)" : isPass ? "#00dc6e" : "#ff6b6b"
+                      }}>
+                        {isEV ? "EV" : i+1}
+                      </div>
+                      <span style={{fontSize:10, color:"rgba(255,255,255,0.25)"}}>{isEV ? "EV%" : `LEG ${i+1}`}</span>
+                    </div>
+                    <input
+                      type="text" inputMode="decimal"
+                      className={`prop-input${!hasVal?"":isPass?" pass":" fail"}`}
+                      placeholder="0.0" value={val}
+                      onChange={e => handleChange(i, e.target.value)}
+                    />
+                    {hasVal && (
+                      <div style={{textAlign:"center", fontSize:10, fontWeight:600, letterSpacing:"1px",
+                        color: isPass ? "#00dc6e" : "#ff6b6b"}}>
+                        {isPass ? "MEETS THRESHOLD" : `NEED ${(slip.threshold - num).toFixed(1)}% MORE`}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Result */}
+          {allFilled && (
+            <div style={{
+              borderRadius:2, padding:24, textAlign:"center",
+              opacity: shown ? 1 : 0, transform: shown ? "translateY(0)" : "translateY(6px)",
+              transition:"opacity 0.3s, transform 0.3s",
+              background: allPass ? "rgba(0,220,110,0.1)" : "rgba(255,77,77,0.08)",
+              border: `1px solid ${allPass ? "rgba(0,220,110,0.35)" : "rgba(255,77,77,0.3)"}`,
+              marginBottom: 12
+            }}>
+              <div style={{fontSize:32, fontFamily:"'Syne',sans-serif", fontWeight:800,
+                color: allPass ? "#00dc6e" : "#ff6b6b", letterSpacing:"-0.5px"}}>
+                {allPass ? "PLAY IT" : "SKIP IT"}
+              </div>
+              <div style={{marginTop:6, fontSize:12, color:"rgba(255,255,255,0.5)"}}>
+                {allPass
+                  ? `All legs meet the ${slip.threshold}% threshold. This slip is +EV.`
+                  : `One or more legs fall below ${slip.threshold}%. Don't force it.`}
+              </div>
+              {!isEV && (
+                <div style={{marginTop:16, display:"flex", justifyContent:"center", gap:24}}>
+                  {[
+                    ["AVG %",  `${avg.toFixed(1)}%`,               "#fff"],
+                    ["NEED",   `${slip.threshold}%`,                "rgba(255,255,255,0.5)"],
+                    ["EDGE",   `${(avg-slip.threshold).toFixed(2)}%`, allPass?"#00dc6e":"#ff6b6b"]
+                  ].map(([lbl,val,col])=>(
+                    <div key={lbl}>
+                      <div style={{fontSize:10, color:"rgba(255,255,255,0.3)", letterSpacing:"1.5px"}}>{lbl}</div>
+                      <div style={{fontSize:20, fontWeight:700, color:col, marginTop:2}}>{val}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CTA */}
+          <div style={{textAlign:"center", marginTop:8}}>
+            <a href="https://discord.gg/YOURLINK" target="_blank" rel="noreferrer"
+              style={{
+                display:"inline-block", padding:"10px 24px",
+                background:"rgba(0,220,110,0.12)", border:"1px solid rgba(0,220,110,0.35)",
+                borderRadius:2, color:"#00dc6e", fontSize:11,
+                fontFamily:"'IBM Plex Mono',monospace", letterSpacing:"1px",
+                textDecoration:"none", fontWeight:600
+              }}>
+              JOIN THE +EV CAVE
+            </a>
+          </div>
+
+          <div style={{marginTop:16, textAlign:"center", fontSize:10, color:"rgba(255,255,255,0.18)", letterSpacing:"1px"}}>
+            BASED ON JOINING THE 5% THRESHOLDS · NOT FINANCIAL ADVICE
+          </div>
+        </div>
+      );
+    }
+
+    React
