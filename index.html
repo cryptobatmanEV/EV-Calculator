@@ -209,7 +209,7 @@ function EVCalculator() {
               <div className={`leg-badge ${!hasV?"badge-neutral":pass?"badge-pass":"badge-fail"}`}>{i+1}</div>
               <span style={{fontSize:10,color:"rgba(255,255,255,0.25)"}}>LEG {i+1}</span>
             </div>
-            <input type="text" inputMode="decimal" className={`tool-input ${!hasV?"":pass?"pass":"fail"}`}
+            <input type="text" inputMode="text" className={`tool-input ${!hasV?"":pass?"pass":"fail"}`}
               placeholder={inputMode==="odds"?"-145":"56.5"} value={val} onChange={e=>handleChange(i,e.target.value)}/>
             {hasV&&inputMode==="odds"&&<div className="hint">{ev.prob.toFixed(1)}% implied</div>}
           </div>);
@@ -268,7 +268,7 @@ function ArbCalculator() {
       <div className="book-title">BOOK 1</div>
       <div className="field-row"><div className="field-wrap"><div className="field-label">SPORTSBOOK</div><input className="fi fi-book" type="text" placeholder="e.g. DraftKings" value={book1} onChange={e=>setBook1(e.target.value)}/></div></div>
       <div className="field-row">
-        <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="decimal" placeholder={ph} value={odds1} onChange={e=>setOdds1(e.target.value)}/>{d1&&<div className="implied">{(1/d1*100).toFixed(1)}% implied · {d1.toFixed(3)} decimal</div>}</div>
+        <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="text" placeholder={ph} value={odds1} onChange={e=>setOdds1(e.target.value)}/>{d1&&<div className="implied">{(1/d1*100).toFixed(1)}% implied · {d1.toFixed(3)} decimal</div>}</div>
         <div className="field-wrap"><div className="field-label">YOUR BET AMOUNT</div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16,color:"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span><input className="fi" type="number" min="1" placeholder="100" value={stake1} onChange={e=>setStake1(e.target.value)} style={{flex:1}}/></div>{payout1&&<div className="implied">Returns {fmt(payout1)} if win</div>}</div>
       </div>
     </div>
@@ -277,7 +277,7 @@ function ArbCalculator() {
       <div className="book-title">BOOK 2</div>
       <div className="field-row"><div className="field-wrap"><div className="field-label">SPORTSBOOK</div><input className="fi fi-book" type="text" placeholder="e.g. FanDuel" value={book2} onChange={e=>setBook2(e.target.value)}/></div></div>
       <div className="field-row">
-        <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="decimal" placeholder={ph} value={odds2} onChange={e=>setOdds2(e.target.value)}/>{d2&&<div className="implied">{(1/d2*100).toFixed(1)}% implied · {d2.toFixed(3)} decimal</div>}</div>
+        <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="text" placeholder={ph} value={odds2} onChange={e=>setOdds2(e.target.value)}/>{d2&&<div className="implied">{(1/d2*100).toFixed(1)}% implied · {d2.toFixed(3)} decimal</div>}</div>
         <div className="field-wrap"><div className="field-label">BET NEEDED</div><div style={{display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:16,color:stake2?"#00dc6e":"rgba(255,255,255,0.3)",fontWeight:700,flexShrink:0}}>$</span><div className={`fi ${stake2?"auto-fill":""}`} style={{display:"flex",alignItems:"center",justifyContent:"center",cursor:"default",height:46,flex:1}}>{stake2?stake2.toFixed(2):<span style={{fontSize:13,fontWeight:400,color:"rgba(255,255,255,0.2)"}}>auto-calculated</span>}</div></div>{payout2&&<div className="implied" style={{color:"rgba(0,220,110,0.5)"}}>Returns {fmt(payout2)} if win</div>}</div>
       </div>
     </div>
@@ -348,7 +348,7 @@ function DevigCalculator() {
             <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.5)",letterSpacing:"1px"}}>SIDE {i+1}</div>
             {sides.length>2&&<button className="remove-btn" onClick={()=>removeSide(i)}>×</button>}
           </div>
-          <input className="fi" type="text" inputMode="decimal"
+          <input className="fi" type="text" inputMode="text"
             placeholder="e.g. -110 or +120"
             value={side.odds} onChange={e=>updateOdds(i,e.target.value)}/>
           {decimals[i]&&<div className="implied">
@@ -451,7 +451,7 @@ function KellyCalculator() {
 
     <div className="card">
       <div className="label-sm">FAIR ODDS (NO-VIG)</div>
-      <input className="tool-input" type="text" inputMode="decimal"
+      <input className="tool-input" type="text" inputMode="text"
         placeholder="From devig calculator, e.g. -115"
         value={fairOdds} onChange={e=>setFairOdds(e.target.value)}/>
       {dFair&&<div className="hint">{(1/dFair*100).toFixed(2)}% true probability</div>}
@@ -459,7 +459,7 @@ function KellyCalculator() {
 
     <div className="card">
       <div className="label-sm">ACTUAL BET ODDS (WHAT THE BOOK IS OFFERING)</div>
-      <input className="tool-input" type="text" inputMode="decimal"
+      <input className="tool-input" type="text" inputMode="text"
         placeholder="e.g. -105 or +110"
         value={betOdds} onChange={e=>setBetOdds(e.target.value)}/>
       {dBet&&<div className="hint">{(1/dBet*100).toFixed(2)}% implied · {dBet.toFixed(3)} decimal</div>}
@@ -558,7 +558,7 @@ function ParlayCalculator() {
           <input className="fi" type="text" placeholder="Team / Player (optional)"
             value={leg.label} onChange={e=>updateLeg(i,"label",e.target.value)}
             style={{flex:2,textAlign:"left",fontSize:12,padding:"10px 12px"}}/>
-          <input className="fi" type="text" inputMode="decimal" placeholder="-110"
+          <input className="fi" type="text" inputMode="text" placeholder="-110"
             value={leg.odds} onChange={e=>updateLeg(i,"odds",e.target.value)}
             style={{flex:1}}/>
           {legs.length>2&&<button className="remove-btn" onClick={()=>removeLeg(i)}>×</button>}
