@@ -650,3 +650,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
+
+<style>
+/* EV Calculator polish: subtle neon workspace backdrop and clear selected controls */
+body{background:radial-gradient(900px 540px at 50% 8%,rgba(0,224,120,.11),transparent 64%),linear-gradient(135deg,rgba(0,224,120,.045),transparent 44%),#0a0d0f!important;}
+.tab-btn.active,.tab-btn.selected,button.active,button.selected,[aria-selected="true"],[aria-pressed="true"]{color:#00e07a!important;background:linear-gradient(180deg,rgba(0,224,120,.16),rgba(0,224,120,.06))!important;border-color:#00e07a!important;box-shadow:0 0 0 1px rgba(29,255,160,.62),0 0 12px rgba(0,224,120,.50),0 0 28px rgba(0,224,120,.22),inset 0 0 16px rgba(0,224,120,.10)!important;text-shadow:0 0 8px rgba(29,255,160,.48)!important;}
+.tab-btn:hover,button:hover{box-shadow:0 0 0 1px rgba(29,255,160,.28),0 0 10px rgba(0,224,120,.18)!important;}
+</style>
