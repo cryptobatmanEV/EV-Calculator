@@ -314,6 +314,8 @@ function ArbCalculator() {
 // ══════════════════════════════════════════════════════════════════════════════
 function DevigCalculator() {
   const [sides,setSides]     = useState([{odds:""},{odds:""}]);
+  const [takeSide,setTakeSide] = useState("0");
+  const [takeOdds,setTakeOdds] = useState("");
   const [show,setShow]       = useState(false);
 
   const updateOdds=(i,v)=>{const s=[...sides];s[i]={odds:v};setSides(s);};
@@ -328,6 +330,10 @@ function DevigCalculator() {
   // True (no-vig) probabilities using multiplicative method
   const trueProbs = allFilled ? decimals.map(d=>(1/d)/totalImpl) : [];
   const fairOdds  = trueProbs.map(p=>p>0 ? 1/p : null);
+  const takeIndex = Math.min(Number(takeSide)||0, sides.length-1);
+  const takeDecimal = toDecimal(takeOdds);
+  const takeProbability = allFilled ? trueProbs[takeIndex] : null;
+  const takeEv = takeDecimal&&takeProbability ? (takeProbability*takeDecimal-1)*100 : null;
 
   useEffect(()=>{
     if(allFilled){setShow(false);setTimeout(()=>setShow(true),20);}
@@ -359,6 +365,42 @@ function DevigCalculator() {
       ))}
       {sides.length<4&&<button className="add-btn" style={{marginTop:10}} onClick={addSide}>+ ADD SIDE (FOR 3-WAY MARKETS)</button>}
     </div>
+
+    <div className="card">
+      <div className="label-sm">AVAILABLE LINE TO TAKE</div>
+      <div style={{display:"flex",gap:10,alignItems:"end"}}>
+        <div style={{width:112}}>
+          <div className="field-label">DEVIG SIDE</div>
+          <select className="fi" value={takeSide} onChange={e=>setTakeSide(e.target.value)}>
+            {sides.map((_,i)=><option key={i} value={i}>SIDE {i+1}</option>)}
+          </select>
+        </div>
+        <div style={{flex:1}}>
+          <div className="field-label">AMERICAN ODDS AVAILABLE</div>
+          <input className="fi" type="text" inputMode="text"
+            placeholder="e.g. -105 or +110"
+            value={takeOdds} onChange={e=>setTakeOdds(e.target.value)}/>
+        </div>
+      </div>
+      {takeProbability&&<div className="hint">Fair price: {toAmerican(1/takeProbability)} · {(takeProbability*100).toFixed(2)}% true probability</div>}
+    </div>
+
+    {allFilled&&takeDecimal&&takeProbability&&(
+      <div className={"result-section "+(takeEv>=0?"result-arb":"result-noarb")}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.35)",letterSpacing:"1.5px",marginBottom:4}}>EXPECTED VALUE · SIDE {takeIndex+1}</div>
+            <div className="big-number" style={{color:takeEv>=0?"#00dc6e":"#ff6b6b"}}>{takeEv>=0?"+":""}{takeEv.toFixed(2)}%</div>
+          </div>
+          <span className={"tag "+(takeEv>=0?"tag-green":"tag-red")}>{takeEv>=0?"+EV":"-EV"}</span>
+        </div>
+        <div className="stat-row">
+          <div><div className="sl">FAIR ODDS</div><div className="sv">{toAmerican(1/takeProbability)}</div></div>
+          <div><div className="sl">AVAILABLE</div><div className="sv">{takeOdds}</div></div>
+          <div><div className="sl">EDGE</div><div className="sv" style={{color:takeEv>=0?"#00dc6e":"#ff6b6b"}}>{takeEv>=0?"Positive":"Negative"}</div></div>
+        </div>
+      </div>
+    )}
 
     {allFilled&&show&&(
       <div className="result-section result-neutral" style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.1)"}}>
@@ -613,15 +655,15 @@ function ParlayCalculator() {
 // ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 const TABS = [
+  {id:"devig", label:"DEVIG", component:<DevigCalculator/>},
   {id:"ev",    label:"+EV",    component:<EVCalculator/>},
   {id:"arb",   label:"ARB",   component:<ArbCalculator/>},
-  {id:"devig", label:"DEVIG", component:<DevigCalculator/>},
   {id:"kelly", label:"KELLY", component:<KellyCalculator/>},
   {id:"parlay",label:"PARLAY",component:<ParlayCalculator/>},
 ];
 
 function App() {
-  const [tab,setTab] = useState("ev");
+  const [tab,setTab] = useState("devig");
   const current = TABS.find(t=>t.id===tab);
   return(
     <div style={{minHeight:"100vh",background:"#0a0d0f",backgroundImage:"radial-gradient(ellipse at 20% 0%,rgba(0,200,100,0.06) 0%,transparent 50%)"}}>
