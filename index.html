@@ -265,7 +265,8 @@ function ArbCalculator() {
       </div>
     </div>
     <div className={`book-block ${isArb&&hasStake?"arb-active":""}`}>
-      <div className="book-title">BOOK 1</div>
+      <div className="book-title">Book 1
+      </div>
       <div className="field-row"><div className="field-wrap"><div className="field-label">SPORTSBOOK</div><input className="fi fi-book" type="text" placeholder="e.g. DraftKings" value={book1} onChange={e=>setBook1(e.target.value)}/></div></div>
       <div className="field-row">
         <div className="field-wrap"><div className="field-label">ODDS</div><input className="fi" type="text" inputMode="text" placeholder={ph} value={odds1} onChange={e=>setOdds1(e.target.value)}/>{d1&&<div className="implied">{(1/d1*100).toFixed(1)}% implied · {d1.toFixed(3)} decimal</div>}</div>
@@ -638,6 +639,7 @@ function App() {
             <button key={t.id} className={"tab-btn"+(tab===t.id?" active":"")} onClick={()=>setTab(t.id)}>{t.label}</button>
           ))}
         </div>
+        <style>.book-block{background:rgba(13,17,20,.92)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:8px!important;padding:14px!important;box-shadow:0 10px 24px rgba(0,0,0,.18)!important;}.book-block.arb-ar-live{background:rgba(13,17,20,.96)!important;border-color:rgba(0,220,110,.18)!important;}</style><style>.book-block{background:rgba(13,17,20,.92)!important;border:1px solid rgba(255,255,255,.10)!important;border-radius:8px!important;padding:14px!important;box-shadow:0 10px 24px rgba(0,0,0,.18)!important;}.book-block.arb-ar-live{background:rgba(13,17,20,.96)!important;border-color:rgba(0,220,110,.18)!important;}</style>
         <div style={{paddingBottom:40}}>
           {current?.component}
         </div>
